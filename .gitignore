@@ -1,0 +1,6 @@
+# Python 虚拟环境
+.venv/
+.DS_Store
+
+# TRAE 生成的 HTML 分享包
+.trae-html-share-packages/

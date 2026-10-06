@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>票根工坊 · 本地票根生成器</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&amp;family=Noto+Sans+SC:wght@300;400;500;600;700&amp;display=swap">
+<style>
+/* ===== 基础 ===== */
+:root {
+  --bg: #16130D;
+  --panel: #1F1B14;
+  --panel-2: #262119;
+  --line: #322C1F;
+  --text: #EDE4D0;
+  --muted: #9A8F78;
+  --accent: #D2533B;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+input { font-family: inherit; }
+
+/* ===== 页头 ===== */
+.header {
+  padding: 34px 48px 22px;
+  border-bottom: 2px dashed rgba(154,143,120,.28);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: baseline; gap: 14px; }
+.brand-cn {
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-weight: 900;
+  font-size: 30px;
+  letter-spacing: 2px;
+}
+.brand-en {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.tagline { color: var(--muted); font-size: 14px; max-width: 420px; }
+.tagline b { color: var(--text); font-weight: 600; }
+
+/* ===== 主区 ===== */
+.main {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 40px;
+  padding: 40px 48px 60px;
+  align-items: start;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ===== 编辑面板 ===== */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.panel-title {
+  font-family: "Noto Serif SC", serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel-title::before {
+  content: "";
+  width: 18px; height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.section { display: flex; flex-direction: column; gap: 22px; }
+
+/* 上传区 */
+.upload {
+  border: 1.5px dashed #4A4230;
+  border-radius: 12px;
+  background: var(--panel-2);
+  min-height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+  text-align: center;
+}
+.upload:hover, .upload.drag {
+  border-color: var(--accent);
+  background: #2B2519;
+}
+.upload-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.upload-empty svg { color: var(--muted); margin-bottom: 2px; }
+.upload-empty .u-main { color: var(--text); font-size: 14px; font-weight: 500; }
+.upload-empty .u-sub { color: var(--muted); font-size: 12px; }
+.upload-has { display: none; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.upload-has img {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.upload-btns { display: flex; gap: 10px; }
+.mini-btn {
+  background: var(--panel);
+  border: 1px solid #4A4230;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  transition: border-color .15s, color .15s;
+}
+.mini-btn:hover { border-color: var(--accent); color: #fff; }
+.mini-btn.danger:hover { border-color: #B03A2A; }
+
+/* 主题 */
+.theme-list { display: flex; gap: 14px; flex-wrap: wrap; }
+.theme-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.theme-dot {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 2px solid #3A3428;
+  background: linear-gradient(135deg, var(--t-paper) 0 55%, var(--t-ink) 55% 100%);
+  position: relative;
+  cursor: pointer;
+  transition: transform .15s;
+}
+.theme-dot::after {
+  content: "";
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--t-accent);
+}
+.theme-dot:hover { transform: scale(1.07); }
+.theme-item.active .theme-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-item.active .theme-name { color: var(--text); }
+.theme-name { font-size: 11px; color: var(--muted); }
+
+/* 票根比例 */
+.ratio-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.ratio-item {
+  background: var(--panel-2);
+  border: 1px solid #3A3428;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .5px;
+  padding: 8px 18px;
+  border-radius: 9px;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.ratio-item:hover { border-color: var(--muted); color: var(--text); }
+.ratio-item.active { border-color: var(--accent); color: #fff; background: #33231C; }
+
+/* 表单 */
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-size: 12px; color: var(--muted); letter-spacing: .5px; }
+.field input {
+  background: var(--panel-2);
+  border: 1px solid #3A3428;
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 11px 14px;
+  transition: border-color .15s;
+  width: 100%;
+}
+.field input:focus { outline: none; border-color: var(--accent); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; }
+.form-grid .full { grid-column: 1 / -1; }
+
+/* 开关 */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.switch-row .sw-label { font-size: 13px; color: var(--text); }
+.switch-row .sw-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.switch {
+  position: relative;
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: #3A3428;
+  border: none;
+  transition: background .18s;
+  flex-shrink: 0;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #B9AE95;
+  transition: transform .18s, background .18s;
+}
+.switch.on { background: var(--accent); }
+.switch.on::after { transform: translateX(20px); background: #fff; }
+
+/* 按钮 */
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background .15s, transform .1s;
+}
+.btn-primary:hover { background: #E05F45; }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: .6; cursor: default; }
+.btn-ghost {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #4A4230;
+  color: var(--muted);
+  border-radius: 10px;
+  font-size: 13px;
+  padding: 11px;
+  transition: color .15s, border-color .15s;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+/* ===== 预览区 ===== */
+.stage { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.stage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.stage-title { font-family: "Noto Serif SC", serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+.stage-hint { font-size: 12px; color: var(--muted); }
+
+.ticket-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* 票根画布：预览与导出使用同一个渲染函数，天然一致 */
+.ticket-canvas {
+  display: block;
+  width: 100%;
+  max-width: var(--tw, 660px);
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 30px 70px rgba(0,0,0,.5);
+}
+
+/* 操作行 */
+.stage-actions { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; }
+.stage-actions .btn-primary { flex: 1; min-width: 180px; }
+.export-size {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 10px 0 16px;
+  flex-shrink: 0;
+}
+.export-size label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.export-size select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 13px 4px;
+  outline: none;
+  cursor: pointer;
+}
+.export-size select option { background: var(--panel); color: var(--text); }
+
+/* 页脚 */
+.footer {
+  padding: 18px 48px 34px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .5px;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.footer .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+/* toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%) translateY(20px);
+  background: #2E2820;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 99;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== 响应式 ===== */
+@media (max-width: 980px) {
+  .main { grid-template-columns: 1fr; padding: 28px 20px 44px; gap: 28px; }
+  .header { padding: 26px 20px 18px; }
+  .footer { padding: 14px 20px 28px; }
+  .ticket-wrap { justify-content: flex-start; }
+}
+@media (max-width: 520px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .brand-cn { font-size: 24px; }
+  .stage-actions { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 页头 ===== -->
+<header class="header">
+  <div class="brand">
+    <span class="brand-cn">票根工坊</span>
+    <span class="brand-en">Ticket Studio</span>
+  </div>
+  
+</header>
+
+<!-- ===== 主区 ===== -->
+<main class="main">
+
+  <!-- 编辑面板 -->
+  <aside class="panel">
+    <div class="panel-title">编辑票根</div>
+
+    <!-- 上传 -->
+    <div class="upload" id="uploadZone" role="button" tabindex="0" aria-label="上传图片">
+      <input type="file" id="fileInput" accept="image/*" hidden="">
+      <div class="upload-empty" id="uploadEmpty" style="display: none;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 16.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2.5"></path>
+          <path d="M12 4v11"></path>
+          <path d="M7.5 9.5 12 5l4.5 4.5"></path>
+        </svg>
+        <span class="u-main">拖入图片，或点击选择</span>
+        <span class="u-sub">建议横图或方图，将自动裁剪至主券区域</span>
+      </div>
+      <div class="upload-has" id="uploadHas" style="display: flex;">
+        <img id="thumb" alt="已上传图片预览" src="blob:file:///f0b96c23-aa47-4e1f-be23-ac5dfc8c82af">
+        <div class="upload-btns">
+          <button type="button" class="mini-btn" id="changeBtn">更换图片</button>
+          <button type="button" class="mini-btn danger" id="removeBtn">移除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主题 -->
+    <div class="section">
+      <div class="field">
+        <label>票纸样式</label>
+        <div class="theme-list" id="themeList"><button type="button" class="theme-item" data-theme="classic" aria-label="票纸样式：经典白" style="--t-paper: #F6F1E7; --t-ink: #211D17; --t-accent: #C2412C;"><span class="theme-dot"></span><span class="theme-name">经典白</span></button><button type="button" class="theme-item" data-theme="seaglass" aria-label="票纸样式：海盐绿" style="--t-paper: #E9F1EF; --t-ink: #16312B; --t-accent: #1E7A6C;"><span class="theme-dot"></span><span class="theme-name">海盐绿</span></button><button type="button" class="theme-item active" data-theme="midnight" aria-label="票纸样式：暗夜金" style="--t-paper: #211E19; --t-ink: #F0E8D6; --t-accent: #E2A83B;"><span class="theme-dot"></span><span class="theme-name">暗夜金</span></button><button type="button" class="theme-item" data-theme="berry" aria-label="票纸样式：莓果粉" style="--t-paper: #F5EAE4; --t-ink: #3B211D; --t-accent: #A63D40;"><span class="theme-dot"></span><span class="theme-name">莓果粉</span></button><button type="button" class="theme-item" data-theme="mist" aria-label="票纸样式：雾蓝" style="--t-paper: #E8EBF3; --t-ink: #1E2542; --t-accent: #3F5AA8;"><span class="theme-dot"></span><span class="theme-name">雾蓝</span></button></div>
+      </div>
+    </div>
+
+    <!-- 票根比例 -->
+    <div class="section">
+      <div class="field">
+        <label>票根比例</label>
+        <div class="ratio-list" id="ratioList"><button type="button" class="ratio-item" data-ratio="1:1" aria-label="票根比例 1:1">1:1</button><button type="button" class="ratio-item" data-ratio="4:3" aria-label="票根比例 4:3">4:3</button><button type="button" class="ratio-item active" data-ratio="3:2" aria-label="票根比例 3:2">3:2</button><button type="button" class="ratio-item" data-ratio="16:9" aria-label="票根比例 16:9">16:9</button><button type="button" class="ratio-item" data-ratio="2:1" aria-label="票根比例 2:1">2:1</button></div>
+      </div>
+    </div>
+
+    <!-- 文字 -->
+    <div class="section">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="fTitle">演出 / 活动名称</label>
+          <input id="fTitle" data-field="title" type="text" maxlength="30">
+        </div>
+        <div class="field full">
+          <label for="fSubtitle">副标题（可选）</label>
+          <input id="fSubtitle" data-field="subtitle" type="text" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="fDate">日期</label>
+          <input id="fDate" data-field="date" type="text" placeholder="2026.10.06">
+        </div>
+        <div class="field">
+          <label for="fTime">时间</label>
+          <input id="fTime" data-field="time" type="text" placeholder="19:30">
+        </div>
+        <div class="field full">
+          <label for="fVenue">地点</label>
+          <input id="fVenue" data-field="venue" type="text" maxlength="26">
+        </div>
+        <div class="field">
+          <label for="fSeat">座位</label>
+          <input id="fSeat" data-field="seat" type="text" maxlength="20">
+        </div>
+        <div class="field">
+          <label for="fPrice">票价</label>
+          <input id="fPrice" data-field="price" type="text" maxlength="12">
+        </div>
+        <div class="field full">
+          <label for="fTicketNo">票号（同时决定条码）</label>
+          <input id="fTicketNo" data-field="ticketNo" type="text" maxlength="24">
+        </div>
+      </div>
+    </div>
+
+    <!-- 印章 -->
+    <div class="switch-row">
+      <div>
+        <div class="sw-label">复古印章</div>
+        <div class="sw-sub">在票根右下角盖一枚「纪念」章</div>
+      </div>
+      <button type="button" class="switch on" id="stampSwitch" role="switch" aria-checked="true"></button>
+    </div>
+
+    <button type="button" class="btn-ghost" id="resetBtn">恢复默认内容</button>
+  </aside>
+
+  <!-- 预览与导出 -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-title">实时预览</span>
+      <span class="stage-hint" id="stageHint">660 × 440 · 导出为 2400 × 1600 高清 PNG</span>
+    </div>
+
+    <div class="ticket-wrap" id="ticketWrap">
+      <canvas class="ticket-canvas" id="ticketCanvas" width="1320" height="880" role="img" aria-label="票根预览" style="--tw: 660px;"></canvas>
+    </div>
+
+    <div class="stage-actions">
+      <div class="export-size">
+        <label for="exportSizeSel">导出尺寸</label>
+        <select id="exportSizeSel" aria-label="导出图像像素大小"><option value="800">800 px · 标准</option><option value="1200">1200 px · 高清</option><option value="1600">1600 px · 超清</option><option value="2400">2400 px · 2K</option><option value="3200">3200 px · 4K</option></select>
+      </div>
+      <button type="button" class="btn-primary" id="exportBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"></path>
+          <path d="m7 10 5 5 5-5"></path>
+          <path d="M4 19h16"></path>
+        </svg>
+        导出 PNG 图片
+      </button>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="dot"></span>
+  纯本地运行：图片仅在你的浏览器中处理，不会上传到任何服务器。可放心使用。
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ===================== 常量 ===================== */
+const BASE_H = 440;        // 设计基准高度（票根所有尺寸以此为基准等比缩放）
+const RIGHT_W = 264;       // 右侧票根固定宽度（设计像素）
+const PREVIEW_DPR = 2;     // 预览超采样倍率，保证清晰
+let DEVICE_SCALE = 1;      // 当前渲染的设备缩放系数（canvas 阴影不随变换矩阵缩放，需据此补偿）
+
+// 导出像素档位（高度，宽度按票根比例自动推算）
+const EXPORT_SIZES = [
+  { h: 800,  label: "800 px · 标准" },
+  { h: 1200, label: "1200 px · 高清" },
+  { h: 1600, label: "1600 px · 超清" },
+  { h: 2400, label: "2400 px · 2K" },
+  { h: 3200, label: "3200 px · 4K" },
+];
+
+// 票根比例：宽高比 = W / H，右侧票根宽度固定，通过改变左侧主图区宽度实现
+const RATIOS = [
+  { key: "1:1",  label: "1:1",  ratio: 1 },
+  { key: "4:3",  label: "4:3",  ratio: 4 / 3 },
+  { key: "3:2",  label: "3:2",  ratio: 3 / 2 },
+  { key: "16:9", label: "16:9", ratio: 16 / 9 },
+  { key: "2:1",  label: "2:1",  ratio: 2 },
+];
+
+const THEMES = {
+  classic:  { paper: "#F6F1E7", ink: "#211D17", accent: "#C2412C", muted: "#8B8373", label: "经典白" },
+  seaglass: { paper: "#E9F1EF", ink: "#16312B", accent: "#1E7A6C", muted: "#5F7B74", label: "海盐绿" },
+  midnight: { paper: "#211E19", ink: "#F0E8D6", accent: "#E2A83B", muted: "#A19880", label: "暗夜金" },
+  berry:    { paper: "#F5EAE4", ink: "#3B211D", accent: "#A63D40", muted: "#8C6B61", label: "莓果粉" },
+  mist:     { paper: "#E8EBF3", ink: "#1E2542", accent: "#3F5AA8", muted: "#6A7392", label: "雾蓝" },
+};
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "." + pad2(d.getMonth() + 1) + "." + pad2(d.getDate());
+}
+function randomNo() {
+  let s = "NO.";
+  for (let i = 0; i < 10; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+const state = {
+  theme: "classic",
+  aspect: "3:2",
+  exportH: 1600,
+  title: "",
+  subtitle: "",
+  date: "",
+  time: "",
+  venue: "",
+  seat: "",
+  price: "",
+  ticketNo: randomNo(),
+  stamp: true,
+  imgEl: null,
+  imgSrc: null,
+};
+
+/* ===================== DOM 引用 ===================== */
+const $ = (id) => document.getElementById(id);
+const els = {
+  uploadZone: $("uploadZone"), fileInput: $("fileInput"),
+  uploadEmpty: $("uploadEmpty"), uploadHas: $("uploadHas"),
+  thumb: $("thumb"), changeBtn: $("changeBtn"), removeBtn: $("removeBtn"),
+  themeList: $("themeList"), ratioList: $("ratioList"), stampSwitch: $("stampSwitch"),
+  resetBtn: $("resetBtn"), exportBtn: $("exportBtn"),
+  ticketWrap: $("ticketWrap"), ticketCanvas: $("ticketCanvas"),
+  stageHint: $("stageHint"), exportSizeSel: $("exportSizeSel"),
+  toast: $("toast"),
+};
+
+/* ===================== 条码（确定性伪随机） ===================== */
+function barcodePattern(seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const rand = () => {
+    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
+    return h / 4294967296;
+  };
+  const bars = [];
+  let x = 0, guard = 0;
+  while (x < 96 && guard++ < 200) {
+    const w = 1 + Math.floor(rand() * 3);
+    bars.push([x, w]);
+    x += w + 1 + Math.floor(rand() * 2);
+  }
+  if (x > 96) bars.pop();
+  return bars;
+}
+
+/* ===================== 主题 ===================== */
+function renderThemes() {
+  els.themeList.innerHTML = "";
+  for (const key of Object.keys(THEMES)) {
+    const t = THEMES[key];
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "theme-item" + (key === state.theme ? " active" : "");
+    item.dataset.theme = key;
+    item.setAttribute("aria-label", "票纸样式：" + t.label);
+    item.style.setProperty("--t-paper", t.paper);
+    item.style.setProperty("--t-ink", t.ink);
+    item.style.setProperty("--t-accent", t.accent);
+    const dot = document.createElement("span");
+    dot.className = "theme-dot";
+    const name = document.createElement("span");
+    name.className = "theme-name";
+    name.textContent = t.label;
+    item.appendChild(dot);
+    item.appendChild(name);
+    item.addEventListener("click", () => {
+      state.theme = key;
+      renderThemes();
+      render();
+    });
+    els.themeList.appendChild(item);
+  }
+}
+
+/* ===================== 票根比例 ===================== */
+function ratioValue() {
+  const r = RATIOS.find((x) => x.key === state.aspect);
+  return r ? r.ratio : 3 / 2;
+}
+function designWidth() { return Math.round(BASE_H * ratioValue()); }
+function exportSize() {
+  const ar = designWidth() / BASE_H;   // 与预览保持完全相同的宽高比
+  return { w: Math.round(state.exportH * ar), h: state.exportH };
+}
+
+function renderExportSizes() {
+  els.exportSizeSel.innerHTML = "";
+  for (const s of EXPORT_SIZES) {
+    const opt = document.createElement("option");
+    opt.value = String(s.h);
+    opt.textContent = s.label;
+    els.exportSizeSel.appendChild(opt);
+  }
+  els.exportSizeSel.value = String(state.exportH);
+}
+
+function renderRatios() {
+  els.ratioList.innerHTML = "";
+  for (const r of RATIOS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ratio-item" + (r.key === state.aspect ? " active" : "");
+    b.textContent = r.label;
+    b.dataset.ratio = r.key;
+    b.setAttribute("aria-label", "票根比例 " + r.label);
+    b.addEventListener("click", () => {
+      state.aspect = r.key;
+      renderRatios();
+      render();
+    });
+    els.ratioList.appendChild(b);
+  }
+}
+
+/* ===================== 绘制工具 ===================== */
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const chars = Array.from(text);
+  const lines = [];
+  let line = "";
+  for (const ch of chars) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function ellipsis(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let s = text.replace(/…$/, "");
+  while (s.length > 1 && ctx.measureText(s + "…").width > maxWidth) s = s.slice(0, -1);
+  return s + "…";
+}
+
+function wrapLines(ctx, text, maxWidth, maxLines) {
+  const lines = wrapText(ctx, text, maxWidth);
+  if (lines.length <= maxLines) return lines;
+  const kept = lines.slice(0, maxLines);
+  kept[maxLines - 1] = ellipsis(ctx, kept[maxLines - 1] + "…", maxWidth);
+  return kept;
+}
+
+function setSpacing(ctx, px) {
+  ctx.letterSpacing = px > 0 ? px + "px" : "0px";
+}
+
+/* ===================== 票根渲染（预览 / 导出共用） ===================== */
+function badgeText() {
+  const d = (state.date || "").replace(/[\/\-]/g, ".");
+  const tail = d.slice(-5);
+  return tail || "—";
+}
+
+function drawTicket(ctx, outW, outH) {
+  const k = outH / BASE_H;
+  DEVICE_SCALE = k;
+  const t = THEMES[state.theme];
+  // 统一设计坐标系：宽高按比例换算，所有布局决策（换行 / 缩号 / 定位）都与分辨率无关
+  const W = outW / k, H = BASE_H;
+  const splitX = W - RIGHT_W;              // 左图 / 右票根 分界线
+
+  ctx.clearRect(0, 0, outW, outH);
+  ctx.save();
+  ctx.scale(k, k);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  setSpacing(ctx, 0);
+  roundRectPath(ctx, 0, 0, W, H, 10);
+  ctx.clip();
+
+  /* --- 票纸底 --- */
+  ctx.fillStyle = t.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  /* --- 左区主图：严格裁切在分界线左侧，绝不越界 --- */
+  const hasImg = !!(state.imgEl && state.imgEl.complete && state.imgEl.naturalWidth > 0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, splitX, H);
+  ctx.clip();
+  if (hasImg) {
+    const iw = state.imgEl.naturalWidth, ih = state.imgEl.naturalHeight;
+    const sc = Math.max(splitX / iw, H / ih);
+    const dw = iw * sc, dh = ih * sc;
+    ctx.drawImage(state.imgEl, (splitX - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = t.ink;
+    ctx.fillRect(0, 0, splitX, H);
+    drawPlaceholder(ctx, splitX, H, 1, t);
+  }
+  ctx.restore();
+
+  /* --- 右区票根：重铺纸色底，与左图形成干净的双栏分区 --- */
+  ctx.fillStyle = t.paper;
+  ctx.fillRect(splitX, 0, RIGHT_W, H);
+  drawBadge(ctx, splitX, 1, t);
+  drawInfo(ctx, splitX, W, H, 1, t);
+  punchPerforation(ctx, splitX, H, 1);
+
+  ctx.restore();
+}
+
+/* 无图占位 */
+function drawPlaceholder(ctx, leftW, H, k, t) {
+  const cx = leftW / 2, cy = H / 2;
+  const top = cy - 44 * k;
+  ctx.save();
+  ctx.strokeStyle = t.muted;
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 1.7 * k;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const x = cx - 17 * k, y = top;
+  ctx.beginPath();
+  ctx.moveTo(x + 1 * k, y + 24 * k);
+  ctx.lineTo(x + 1 * k, y + 27 * k);
+  ctx.quadraticCurveTo(x + 1 * k, y + 31 * k, x + 5 * k, y + 31 * k);
+  ctx.lineTo(x + 29 * k, y + 31 * k);
+  ctx.quadraticCurveTo(x + 33 * k, y + 31 * k, x + 33 * k, y + 27 * k);
+  ctx.lineTo(x + 33 * k, y + 24 * k);
+  ctx.moveTo(x + 17 * k, y + 22 * k);
+  ctx.lineTo(x + 17 * k, y + 3 * k);
+  ctx.moveTo(x + 9 * k, y + 11 * k);
+  ctx.lineTo(x + 17 * k, y + 3 * k);
+  ctx.lineTo(x + 25 * k, y + 11 * k);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = t.muted;
+  ctx.font = '400 ' + 15 * k + 'px "Noto Sans SC", sans-serif';
+  setSpacing(ctx, 2 * k);
+  ctx.textAlign = "center";
+  ctx.fillText("上传图片", cx, top + 56 * k);
+  ctx.textAlign = "left";
+  setSpacing(ctx, 0);
+}
+
+/* 日期徽章 */
+function drawBadge(ctx, leftW, k, t) {
+  const label = badgeText();
+  const fs = 13 * k;
+  ctx.font = '700 ' + fs + 'px "Noto Sans SC", sans-serif';
+  const bw = ctx.measureText(label).width + 26 * k;
+  const bh = 26 * k;
+  const bx = Math.max(6 * k, leftW - 18 * k - bw);
+  const by = 18 * k;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.35)";
+  ctx.shadowBlur = 14 * DEVICE_SCALE;
+  ctx.shadowOffsetY = 4 * DEVICE_SCALE;
+  ctx.fillStyle = t.accent;
+  roundRectPath(ctx, bx, by, bw, bh, 6 * k);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, bx + bw / 2, by + bh / 2 + 1 * k);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+}
+
+/* 右侧票根信息 */
+function drawInfo(ctx, splitX, W, H, k, t) {
+  const padT = 24 * k, padX = 22 * k, padB = 20 * k;
+  const x0 = splitX + padX;
+  const cw = W - padX - x0;
+  let top = padT;
+
+  // 顶栏
+  ctx.fillStyle = t.accent;
+  ctx.font = '700 ' + 10 * k + 'px "Noto Sans SC", sans-serif';
+  setSpacing(ctx, 3 * k);
+  ctx.fillText("ADMIT ONE", x0, top + 9 * k);
+  ctx.fillStyle = t.muted;
+  ctx.font = '500 ' + 10 * k + 'px "Noto Sans SC", sans-serif';
+  setSpacing(ctx, 1 * k);
+  ctx.textAlign = "right";
+  ctx.fillText(state.ticketNo, x0 + cw, top + 9 * k);
+  ctx.textAlign = "left";
+  setSpacing(ctx, 0);
+  top += 18 * k;
+
+  // 标题
+  top += 12 * k;
+  const tlen = Array.from(state.title || "").length;
+  const tSize = (tlen > 10 ? 17 : 21) * k;
+  ctx.fillStyle = t.ink;
+  ctx.font = '700 ' + tSize + 'px "Noto Serif SC", "Songti SC", serif';
+  const tLines = wrapLines(ctx, state.title || "—", cw, 2);
+  const tlh = tSize * 1.3;
+  for (const l of tLines) {
+    ctx.fillText(l, x0, top + tSize * 0.82);
+    top += tlh;
+  }
+
+  // 虚线分隔
+  top += 12 * k;
+  ctx.save();
+  ctx.setLineDash([6 * k, 8 * k]);
+  ctx.strokeStyle = t.ink;
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = 1.5 * k;
+  ctx.beginPath();
+  ctx.moveTo(x0, top);
+  ctx.lineTo(x0 + cw, top);
+  ctx.stroke();
+  ctx.restore();
+  top += 14 * k;
+
+  // 信息行
+  const rows = [
+    ["演出", state.title],
+    ["日期", state.date],
+    ["时间", state.time],
+    ["地点", state.venue],
+    ["座位", state.seat],
+    ["票价", state.price],
+  ];
+  const labelLh = 12 * k, valueLh = 18 * k, rowGap = 10 * k;
+  rows.forEach(([label, value], idx) => {
+    ctx.fillStyle = t.muted;
+    ctx.font = '500 ' + 9 * k + 'px "Noto Sans SC", sans-serif';
+    setSpacing(ctx, 2 * k);
+    ctx.fillText(label, x0, top + 9 * k);
+    setSpacing(ctx, 0);
+    top += labelLh + 2 * k;
+
+    const isTitle = label === "演出";
+    ctx.fillStyle = t.ink;
+    ctx.font = isTitle
+      ? '700 ' + 14 * k + 'px "Noto Serif SC", "Songti SC", serif'
+      : '600 ' + 14 * k + 'px "Noto Sans SC", sans-serif';
+    const vLines = wrapLines(ctx, value || "—", cw, isTitle ? 2 : 1);
+    for (const l of vLines) {
+      ctx.fillText(l, x0, top + 14 * k * 0.82);
+      top += valueLh;
+    }
+    if (idx < rows.length - 1) top += rowGap;
+  });
+
+  // 底部条码（贴底）
+  const barcodeH = 32 * k, footGap = 7 * k, numLh = 12 * k;
+  const footTop = (H - padB) - (barcodeH + footGap + numLh);
+  drawBarcode(ctx, x0, footTop, cw, barcodeH, t.ink);
+
+  ctx.fillStyle = t.muted;
+  ctx.font = '500 ' + 9 * k + 'px "Noto Sans SC", sans-serif';
+  setSpacing(ctx, 3 * k);
+  ctx.textAlign = "center";
+  ctx.fillText(state.ticketNo, x0 + cw / 2, footTop + barcodeH + footGap + 9 * k);
+  ctx.textAlign = "left";
+  setSpacing(ctx, 0);
+
+  // 复古印章
+  if (state.stamp) drawStamp(ctx, W - 41 * k, H - 89 * k, k, t);
+}
+
+function drawBarcode(ctx, x, y, w, h, color) {
+  const bars = barcodePattern(state.ticketNo || "0");
+  const unit = w / 96;
+  ctx.fillStyle = color;
+  for (const [bx, bw] of bars) {
+    ctx.fillRect(x + bx * unit, y, Math.max(1, bw * unit), h);
+  }
+}
+
+function drawStamp(ctx, cx, cy, k, t) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((-12 * Math.PI) / 180);
+  ctx.globalAlpha = 0.6;
+  ctx.strokeStyle = t.accent;
+  ctx.lineWidth = 2.5 * k;
+  ctx.beginPath();
+  ctx.arc(0, 0, 31 * k, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.5 * k;
+  ctx.beginPath();
+  ctx.arc(0, 0, 26.5 * k, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = t.accent;
+  ctx.font = '700 ' + 20 * k + 'px "Noto Serif SC", "Songti SC", serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("纪", 0, -10 * k);
+  ctx.fillText("念", 0, 14 * k);
+  ctx.restore();
+}
+
+/* 打孔线与上下缺口（挖成透明） */
+function punchPerforation(ctx, splitX, H, k) {
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillStyle = "#000";
+  const r = 6 * k, gap = 34 * k;
+  for (let y = gap / 2; y < H; y += gap) {
+    ctx.beginPath();
+    ctx.arc(splitX, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const nr = 23 * k;
+  ctx.beginPath();
+  ctx.arc(splitX, 0, nr, Math.PI, 0);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(splitX, H, nr, 0, Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ===================== 预览渲染 ===================== */
+function updateHint() {
+  const dw = designWidth();
+  const es = exportSize();
+  els.stageHint.textContent = dw + " × " + BASE_H + " · 导出为 " + es.w + " × " + es.h + " 高清 PNG";
+}
+
+function render() {
+  const dw = designWidth();
+  const outW = Math.round(dw * PREVIEW_DPR);
+  const outH = Math.round(BASE_H * PREVIEW_DPR);
+  const canvas = els.ticketCanvas;
+  if (canvas.width !== outW || canvas.height !== outH) {
+    canvas.width = outW;
+    canvas.height = outH;
+  }
+  canvas.style.setProperty("--tw", dw + "px");
+  drawTicket(canvas.getContext("2d"), outW, outH);
+  updateHint();
+}
+
+/* ===================== 上传 ===================== */
+function openFilePicker() { els.fileInput.click(); }
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    showToast("请选择图片文件（PNG / JPG / WEBP 等）");
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    state.imgEl = img;
+    state.imgSrc = url;
+    els.thumb.src = url;
+    els.uploadEmpty.style.display = "none";
+    els.uploadHas.style.display = "flex";
+    render();
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    showToast("图片读取失败，请换一张试试");
+  };
+  img.src = url;
+}
+
+function removeImage() {
+  if (state.imgSrc) URL.revokeObjectURL(state.imgSrc);
+  state.imgEl = null;
+  state.imgSrc = null;
+  els.uploadEmpty.style.display = "flex";
+  els.uploadHas.style.display = "none";
+  render();
+}
+
+/* ===================== 表单绑定 ===================== */
+function bindInputs() {
+  document.querySelectorAll("[data-field]").forEach((el) => {
+    el.value = state[el.dataset.field] || "";
+    el.addEventListener("input", () => {
+      state[el.dataset.field] = el.value;
+      render();
+    });
+  });
+}
+
+/* ===================== Toast ===================== */
+let toastTimer = null;
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2400);
+}
+
+/* ===================== 导出 ===================== */
+function downloadBlob(blob, filename) {
+  const a = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 400);
+}
+
+async function exportPNG() {
+  els.exportBtn.disabled = true;
+  els.exportBtn.innerHTML = "生成中…";
+  try {
+    try { await document.fonts.ready; } catch (e) { /* 字体不可用时使用回退字体 */ }
+    const es = exportSize();
+    const canvas = document.createElement("canvas");
+    canvas.width = es.w;
+    canvas.height = es.h;
+    // 与预览使用完全相同的渲染函数，保证导出与预览一致
+    drawTicket(canvas.getContext("2d"), es.w, es.h);
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob 失败"))), "image/png");
+    });
+    const clean = (state.ticketNo || "ticket").replace(/[^\w\-]/g, "");
+    downloadBlob(blob, "ticket-" + (clean || "ticket") + ".png");
+    showToast("已导出 PNG（" + es.w + " × " + es.h + "）");
+  } catch (err) {
+    showToast("导出失败，请重试");
+  } finally {
+    els.exportBtn.disabled = false;
+    els.exportBtn.innerHTML =
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg> 导出 PNG 图片';
+  }
+}
+
+/* ===================== 事件绑定与初始化 ===================== */
+function bindEvents() {
+  // 上传
+  els.uploadZone.addEventListener("click", openFilePicker);
+  els.uploadZone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFilePicker(); }
+  });
+  els.fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
+    e.target.value = "";
+  });
+  ["dragover", "dragenter"].forEach((ev) =>
+    els.uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      els.uploadZone.classList.add("drag");
+    })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    els.uploadZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      els.uploadZone.classList.remove("drag");
+    })
+  );
+  els.uploadZone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  els.changeBtn.addEventListener("click", (e) => { e.stopPropagation(); openFilePicker(); });
+  els.removeBtn.addEventListener("click", (e) => { e.stopPropagation(); removeImage(); });
+
+  // 印章开关
+  els.stampSwitch.addEventListener("click", () => {
+    state.stamp = !state.stamp;
+    els.stampSwitch.classList.toggle("on", state.stamp);
+    els.stampSwitch.setAttribute("aria-checked", String(state.stamp));
+    render();
+  });
+
+  // 重置
+  els.resetBtn.addEventListener("click", () => {
+    state.title = "";
+    state.subtitle = "";
+    state.date = "";
+    state.time = "";
+    state.venue = "";
+    state.seat = "";
+    state.price = "";
+    state.ticketNo = randomNo();
+    bindInputs();
+    render();
+    showToast("已清空内容（图片保留）");
+  });
+
+  // 导出尺寸档位
+  els.exportSizeSel.addEventListener("change", () => {
+    state.exportH = Number(els.exportSizeSel.value) || 1600;
+    updateHint();
+  });
+
+  // 导出
+  els.exportBtn.addEventListener("click", exportPNG);
+}
+
+function init() {
+  renderThemes();
+  renderRatios();
+  renderExportSizes();
+  bindInputs();
+  bindEvents();
+  els.stampSwitch.classList.add("on");
+  render();
+  // 网络字体加载完成后重绘，确保预览与导出一致
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => render()).catch(() => {});
+  }
+}
+
+init();
+</script>
+
+</body></html>
